@@ -3,13 +3,21 @@ const jwt = require("jsonwebtoken");
 const Auth = require("../Models/authModel");
 const Property = require("../Models/propertyModel");
 const SavedProperty = require("../Models/savedPropertiesModel");
-const {
-  findUsers,
-  findProperties,
-  findSavedProperties,
-} = require("../Service/");
+// const {
+//   findUsers,
+//   findProperties,
+//   findSavedProperties,
+// } = require("../Service/");
 
-const registerUser = async (req, res) => {
+// Welcome message
+const handleWelcomeMessage = async (req, res) => {
+res.status(200).json({ message: "Welcome to the HomeFinder" });
+};
+
+//USER AUTHENTICATION AND REGISTRATION FUNCTIONS
+
+// Register a new user
+const handleRegisterUser = async (req, res) => {
   try {
     const {
       firstName,
@@ -19,6 +27,7 @@ const registerUser = async (req, res) => {
       password,
       phoneNumber,
       isAgent,
+      isAdmin
     } = req.body;
 
     if (
@@ -104,6 +113,7 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       phoneNumber,
       isAgent,
+      isAdmin,
     });
 
     await newUser.save();
@@ -116,6 +126,8 @@ const registerUser = async (req, res) => {
         username,
         email,
         phoneNumber,
+        isAgent,
+        isAdmin,
       },
     });
   } catch (err) {
@@ -123,7 +135,8 @@ const registerUser = async (req, res) => {
   }
 };
 
-const userLogin = async (req, res) => {
+// User login
+const handleUserLogin = async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
@@ -176,7 +189,7 @@ const userLogin = async (req, res) => {
 
     // Generate tokens
     const accessToken = jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN, {
-      expiresIn: "1h",
+      expiresIn: "12h",
     });
     const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN, {
       expiresIn: "30d",
@@ -186,6 +199,7 @@ const userLogin = async (req, res) => {
       message: "Login successful",
       accessToken,
       user: {
+        id: user?._id,
         email: user?.email,
         firstName: user?.firstName,
         lastName: user?.lastName,
@@ -198,28 +212,52 @@ const userLogin = async (req, res) => {
   }
 };
 
-const getAllUsers = async (req, res) => {
+// Get all users
+const handleGetAllUsers = async (req, res) => {
   try {
     const users = await Auth.find();
-    res.status(200).json(users);
+    res.status(200).json({
+      users: users.map(user => ({
+        id: user?._id,
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        username: user?.username,
+        email: user?.email,
+        phoneNumber: user?.phoneNumber,
+        isAgent: user?.isAgent,
+        isAdmin: user?.isAdmin
+      }))
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// const findUsers = async (req, res) => {
-//   try {
-//     const user = await Auth.findById(req.params.id);
-//     if (!user) {
-//       return res.status(404).json({ error: "User not found" });
-//     }
-//     res.status(200).json(user);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
+// Find user by ID
+const handleFindUser = async (req, res) => {
+  try {
+    const user = await Auth.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.status(200).json({user: {
+      firstName: user?.firstName,
+      lastName: user?.lastName,
+      username: user?.username,
+      email: user?.email,
+      phoneNumber: user?.phoneNumber,
+      isAgent: user?.isAgent,
+      isAdmin: user?.isAdmin
+    }});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
-const createProperty = async (req, res) => {
+//PROPERTY MANAGEMENT FUNCTIONS
+
+// Create a new property
+const handleCreateProperty = async (req, res) => {
   try {
     const { title, description, price, location, propertyType, image } =
       req.body;
@@ -346,7 +384,8 @@ const createProperty = async (req, res) => {
   }
 };
 
-const findProperty = async (req, res) => {
+// Find all properties
+const handleFindProperties = async (req, res) => {
   try {
     const properties = await Property.find();
     res.status(200).json(properties);
@@ -355,7 +394,8 @@ const findProperty = async (req, res) => {
   }
 };
 
-const findPropertyById = async (req, res) => {
+// Find property by ID
+const handleFindProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
     if (!property) {
@@ -367,7 +407,8 @@ const findPropertyById = async (req, res) => {
   }
 };
 
-const saveProperty = async (req, res) => {
+// Save a property
+const handleSaveProperty = async (req, res) => {
   try {
     const { propertyId } = req.params;
     const { notes, isFavorite } = req.body;
@@ -421,18 +462,20 @@ const saveProperty = async (req, res) => {
   }
 };
 
-const savedProperties = async (req, res) => {
+// Get all saved properties for the user
+const handleGetSavedProperties = async (req, res) => {
   try {
     const savedProperties = await SavedProperty.find({ user: req.user.id })
       .populate("property")
       .exec();
-    res.status(200).json(savedProperties);
+    res.status(200).json({ savedProperties });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-const savedPropertiesById = async (req, res) => {
+// Get a saved property by ID
+const handleGetSavedProperty = async (req, res) => {
   try {
     const savedProperty = await SavedProperty.findById(req.params.id)
       .populate("property")
@@ -446,7 +489,8 @@ const savedPropertiesById = async (req, res) => {
   }
 };
 
-const removeSavedProperty = async (req, res) => {
+// Remove a saved property
+const handleRemoveSavedProperty = async (req, res) => {
   try {
     const savedProperty = await SavedProperty.findByIdAndDelete(req.params.id);
     if (!savedProperty) {
@@ -458,7 +502,8 @@ const removeSavedProperty = async (req, res) => {
   }
 };
 
-const updateSavedProperty = async (req, res) => {
+// Update a saved property
+const handleUpdateSavedProperty = async (req, res) => {
   try {
     const { notes, isFavorite } = req.body;
 
@@ -493,7 +538,8 @@ const updateSavedProperty = async (req, res) => {
   }
 };
 
-const propertyFilter = async (req, res) => {
+// Filter properties based on price range, type, and location
+const handlePropertyFilter = async (req, res) => {
   try {
     const { priceRange, propertyType, location } = req.query;
 
@@ -519,17 +565,18 @@ const propertyFilter = async (req, res) => {
 
 
 module.exports = {
-  registerUser,
-  userLogin,
-  getAllUsers,
-  findUsers,
-  createProperty,
-  findProperty,
-  findPropertyById,
-  saveProperty,
-  savedProperties,
-  savedPropertiesById,
-  removeSavedProperty,
-  updateSavedProperty,
-  propertyFilter,
+  handleWelcomeMessage,
+  handleRegisterUser,
+  handleUserLogin,
+  handleGetAllUsers,
+  handleFindUser,
+  handleCreateProperty,
+  handleFindProperties,
+  handleFindProperty,
+  handleSaveProperty,
+  handleGetSavedProperties,
+  handleGetSavedProperty,
+  handleRemoveSavedProperty,
+  handleUpdateSavedProperty,
+  handlePropertyFilter,
 };

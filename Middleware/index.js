@@ -2,14 +2,14 @@ const jwt = require("jsonwebtoken");
 const Auth = require('../Models/authModel');
 
     
-const validateRegistration  = (req, res, next)=>{
+const validateDetails  = (req, res, next)=>{
 
-    const {email, firstName, lastName, password, state} = req.body
+    const {email, username, firstName, lastName, password, state} = req.body
 
     const errors = []
 
-    if (!email) {
-        errors.push("Missing email")
+    if (!email && !username) {
+        errors.push("Missing email or username")
     }
 
     if (!password) {
@@ -25,7 +25,7 @@ const validateRegistration  = (req, res, next)=>{
 }
 
 
-const authorization  = async (req, res, next) => {
+const auth  = async (req, res, next) => {
   
     const token = req.header("Authorization")
 
@@ -57,20 +57,104 @@ const authorization  = async (req, res, next) => {
         return res.status(404).json({message: "User not found"})
     }
  
-    // if(user.role !== "admin") { 
-    //     return res.status(403).json({message: "Invalid Authorization"})
-    // }
 
     req.user = user
 
     console.log(user)
 
     next() 
-}
+};
 
+const agentAuth  = async (req, res, next) => {
+  
+    const token = req.header("Authorization")
+
+    if (!token) {
+        return res.status(401).json({message: "Unauthorized. Please login"})
+    }
+
+    console.log({token})
+
+    const spiltToken = token.split(" ")
+
+    console.log({spiltToken}) 
+
+    const accessToken = spiltToken[1]
+
+    console.log({accessToken})
+
+    const decoded = jwt.verify(accessToken, `${process.env.ACCESS_TOKEN}` )
+
+    if (!decoded) {
+        return res.status(401 ).json({message: "Unauthorized. Please login"})
+    }
+
+    console.log({decoded})
+
+    const user = await Auth.findById(decoded.id)
+
+    if (!user) {
+        return res.status(404).json({message: "User not found"})
+    }
+
+    if(user.isAgent !== true) { 
+        return res.status(403).json({message: "Invalid Authorization"})
+    }
+
+    req.user = user
+
+    console.log(user)
+
+    next() 
+};
+
+const adminAuth  = async (req, res, next) => {
+  
+    const token = req.header("Authorization")
+
+    if (!token) {
+        return res.status(401).json({message: "Unauthorized. Please login"})
+    }
+
+    console.log({token})
+
+    const spiltToken = token.split(" ")
+
+    console.log({spiltToken}) 
+
+    const accessToken = spiltToken[1]
+
+    console.log({accessToken})
+
+    const decoded = jwt.verify(accessToken, `${process.env.ACCESS_TOKEN}` )
+
+    if (!decoded) {
+        return res.status(401 ).json({message: "Unauthorized. Please login"})
+    }
+
+    console.log({decoded})
+
+    const user = await Auth.findById(decoded.id)
+
+    if (!user) {
+        return res.status(404).json({message: "User not found"})
+    }
+
+    if(user.isAdmin !== true) { 
+        return res.status(403).json({message: "Invalid Authorization"})
+    }
+
+    req.user = user
+
+    console.log(user)
+
+    next() 
+};
 
 
 module.exports = {
-    validateRegistration,
-    authorization
+    validateDetails,
+    auth,
+    agentAuth,
+    adminAuth
 }
