@@ -1,5 +1,8 @@
 #  Real Estate Listing Platform (HomeFinder)
 
+API POSTMAN Documentation:
+`https://documenter.getpostman.com/view/40126725/2sB2x6nCMj`
+
 ## Backend for listing and saving real estate properties. 
 
 ## Main Features: 
